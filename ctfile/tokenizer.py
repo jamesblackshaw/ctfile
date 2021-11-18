@@ -5,7 +5,7 @@
 ctfile.tokenizer
 ~~~~~~~~~~~~~~~~
 
-This module implements tokenizer that processes text file and yields 
+This module implements tokenizer that processes text file and yields
 tokens necessary to create ``CTfile`` objects.
 """
 
@@ -57,7 +57,6 @@ def tokenizer(text):
             lines_stream = deque(entry.split('\n'))
         else:
             continue
-
         # yield from _molfile(stream=lines_stream)
         for token in _molfile(stream=lines_stream):
             yield token
@@ -72,13 +71,22 @@ def tokenizer(text):
 
 def _molfile(stream):
     """Process ``Molfile``.
-    
+
     :param stream: Queue containing lines of text.
     :type stream: :py:class:`collections.deque`
     :return: Tuples of data.
     """
     yield MolfileStart()
-    yield HeaderBlock(stream.popleft().strip(), stream.popleft().strip(), stream.popleft().strip())
+    copy_stream = stream.copy()
+    #print(stream)
+    header = (copy_stream.popleft().strip(), copy_stream.popleft().strip(), copy_stream.popleft().strip())
+    print("HEADER = {}".format(header))
+    #data_only = re.compile("> <")
+    if "> <" in header[1]:
+        print("no header for record {} {}, skipping molfile processing".format(header[1], header[2]))
+    else:
+        yield HeaderBlock(stream.popleft().strip(), stream.popleft().strip(), stream.popleft().strip())
+
     # yield from _ctab(stream)
     for token in _ctab(stream):
         yield token
@@ -87,7 +95,7 @@ def _molfile(stream):
 
 def _sdfile(stream):
     """Process ``SDfile``.
-    
+
     :param stream: Queue containing lines of text.
     :type stream: :py:class:`collections.deque`
     :return: Tuples of data.
@@ -95,13 +103,14 @@ def _sdfile(stream):
     yield DataBlockStart()
     # yield from _data_block(stream=stream)
     for token in _data_block(stream=stream):
+        print(token)
         yield token
     yield DataBlockEnd()
 
 
 def _ctab(stream):
     """Process ``Ctab``.
-    
+
     :param stream: Queue containing lines of text.
     :type stream: :py:class:`collections.deque`
     :return: Tuples of data.
@@ -110,23 +119,28 @@ def _ctab(stream):
     counts_line = stream.popleft()
     counts_line_values = [counts_line[i:i + 3].strip() for i in range(0, len(counts_line) - 6, 3)] + \
                          [counts_line[-6:len(counts_line)].strip()]
-    ctab_counts_line = CtabCountsLine(*counts_line_values)
-    yield ctab_counts_line
+    print("COUNTS_LINE_VALUES: {} \n".format(counts_line_values))
+    if counts_line_values == ['']:
+        ctab_counts_line = ""
+    else:
+        ctab_counts_line = CtabCountsLine(*counts_line_values)
+        print("ctab_counts_line: {} \n".format(ctab_counts_line))
+        yield ctab_counts_line
+        number_of_atoms = ctab_counts_line.number_of_atoms
+        number_of_bonds = ctab_counts_line.number_of_bonds
 
-    number_of_atoms = ctab_counts_line.number_of_atoms
-    number_of_bonds = ctab_counts_line.number_of_bonds
-    
-    # yield from _ctab_atom_bond_block(number_of_lines=number_of_atoms, block_type=CtabAtomBlockLine, stream=stream)
-    for token in _ctab_atom_block(number_of_lines=number_of_atoms, block_type=CtabAtomBlockLine, stream=stream):
-        yield token
+        # yield from _ctab_atom_bond_block(number_of_lines=number_of_atoms, block_type=CtabAtomBlockLine, stream=stream)
+        for token in _ctab_atom_block(number_of_lines=number_of_atoms, block_type=CtabAtomBlockLine, stream=stream):
+            yield token
 
-    # yield from _ctab_atom_bond_block(number_of_lines=number_of_bonds, block_type=CtabBondBlockLine, stream=stream)
-    for token in _ctab_bond_block(number_of_lines=number_of_bonds, block_type=CtabBondBlockLine, stream=stream):
-        yield token
+        # yield from _ctab_atom_bond_block(number_of_lines=number_of_bonds, block_type=CtabBondBlockLine, stream=stream)
+        for token in _ctab_bond_block(number_of_lines=number_of_bonds, block_type=CtabBondBlockLine, stream=stream):
+            yield token
 
-    # yield from _ctab_property_block(stream=stream)
-    for token in _ctab_property_block(stream=stream):
-        yield token
+        # yield from _ctab_property_block(stream=stream)
+        for token in _ctab_property_block(stream=stream):
+            print(token)
+            yield token
 
     yield CtabBlockEnd()
 
@@ -181,7 +195,7 @@ def _ctab_property_block(stream):
     """
     line = stream.popleft()
     while line != 'M  END':
-    
+
         tokens = line.split()
         if len(tokens) > 1:
             name = tokens[1]
@@ -193,7 +207,7 @@ def _ctab_property_block(stream):
 
 def _data_block(stream):
     """Process data block of ``CTfile``.
-    
+
     :param stream: Queue containing lines of text.
     :type stream: :py:class:`collections.deque`
     :return: Tuples of data.

@@ -23,10 +23,11 @@ from .conf import index_charge
 from .utils import OrderedCounter
 from .exceptions import IsotopeSpecError, ChargeSpecError
 import jsonpickle
+import re
 
 
 class CTfile(OrderedDict):
-    """Base class to represent collection of Chemical table file (``CTfile``) 
+    """Base class to represent collection of Chemical table file (``CTfile``)
     formats, e.g. ``Molfile``, ``SDfile``."""
 
     ctab_conf = ctab_properties_conf
@@ -35,7 +36,7 @@ class CTfile(OrderedDict):
 
     def __init__(self, *args, **kwargs):
         """CTfile initializer.
-        
+
         :param lexer: instance of the ``CTfile`` format tokenizer.
         :type lexer: :func:`~ctfile.tokenizer.tokenizer`.
         """
@@ -53,7 +54,7 @@ class CTfile(OrderedDict):
     @classmethod
     def loadstr(cls, string):
         """Load data into ``CTfile`` object from string.
-        
+
         :param str string: String containing data in ``CTfile`` format.
         :return: Instance of ``CTfile``.
         """
@@ -86,7 +87,7 @@ class CTfile(OrderedDict):
             raise ValueError('Cannot determine the format of string.')
 
     def write(self, filehandle, file_format):
-        """Write :class:`~ctfile.ctfile.CTfile` data into file. 
+        """Write :class:`~ctfile.ctfile.CTfile` data into file.
 
         :param filehandle: File-like object.
         :param str file_format: Format to use to write data: ``ctfile`` or ``json``.
@@ -100,7 +101,7 @@ class CTfile(OrderedDict):
 
     def writestr(self, file_format):
         """Write :class:`~ctfile.ctfile.CTfile` data into string.
-        
+
         :param str file_format: Format to use to write data: ``ctfile`` or ``json``.
         :return: String representing the :class:`~ctfile.ctfile.CTfile` instance.
         :rtype: :py:class:`str`.
@@ -118,7 +119,7 @@ class CTfile(OrderedDict):
 
         :param str file_format: Format to use: ``ctfile`` or ``json``.
         :param f: Print to file or stdout.
-        :type f: File-like 
+        :type f: File-like
         :return: None.
         :rtype: :py:obj:`None`.
         """
@@ -141,14 +142,14 @@ class CTfile(OrderedDict):
         # jsonpickle.set_encoder_options('json', sort_keys=True, indent=4)
         # return jsonpickle.encode(self)
         return json.dumps(self, sort_keys=sort_keys, indent=indent, cls=CtabAtomBondEncoder)
-    
+
     def _to_molfile(self):
 
         return to_string(self)
 
     def _to_ctfile(self):
         """Convert :class:`~ctfile.ctfile.CTfile` into `CTfile` formatted string.
-        
+
         :return: ``CTfile`` formatted string.
         :rtype: :py:class:`str`.
         """
@@ -234,18 +235,18 @@ class Ctab(CTfile):
         zzzzzzzzzz = atom z coordinate
         aaa        = atom symbol
         dd         = mass difference: -3, -2, -1, 0, 1, 2, 3, 4, (0 if value beyond these limits)
-        ccc        = charge: 0=uncharged or value other than these, 1=+3, 2=+2, 3=+1, 
+        ccc        = charge: 0=uncharged or value other than these, 1=+3, 2=+2, 3=+1,
                      4=doublet radical, 5=-1, 6=-2, 7=-3
         sss        = atom stereo parity: 0=not stereo, 1=odd, 2=even, 3=either or unmarked stereo center
         hhh        = hydrogen count + 1: 1=H0, 2=H1, 3=H2, 4=H3, 5=H4
-        bbb        = stereo care box: 0=ignore stereo configuration of this double bond atom, 
+        bbb        = stereo care box: 0=ignore stereo configuration of this double bond atom,
                      1=stereo configuration of double bond atom must match
         vvv        = valence: 0=no marking (default), (1 to 14)=(1 to 14), 15=zero valence
         HHH        = H0 designator: 0=not specified, 1=no H atoms allowed
         rrr        = (obsolete)
         iii        = (obsolete)
         mmm        = atom-atom mapping number: 1=number of atoms
-        nnn        = inversion/retention flag: 0=property not applied 1=configuration is inverted, 
+        nnn        = inversion/retention flag: 0=property not applied 1=configuration is inverted,
                      2=configuration is retained
         eee        = exact change flag: 0=property not applied, 1=change on atom must be exactly as shown
 
@@ -253,20 +254,20 @@ class Ctab(CTfile):
     where:
         111 = first atom number: 1=number of atoms
         222 = second atom number: 1=number of atoms
-        ttt = bond type: 1=Single, 2=Double, 3=Triple, 4=Aromatic, 5=Single or Double, 6=Single or Aromatic, 
+        ttt = bond type: 1=Single, 2=Double, 3=Triple, 4=Aromatic, 5=Single or Double, 6=Single or Aromatic,
               7=Double or Aromatic, 8=Any
-        sss = bond stereo: Single bonds: 0=not stereo, 1=Up, 4=Either, 6=Down; 
-              Double bonds: 0=Use x-, y-, z-coords from atom block to determine cis or trans, 
+        sss = bond stereo: Single bonds: 0=not stereo, 1=Up, 4=Either, 6=Down;
+              Double bonds: 0=Use x-, y-, z-coords from atom block to determine cis or trans,
               3=Cis or trans (either) double bond
         xxx = (obsolete)
         rrr = bond topology: 0=Either, 1=Ring, 2=Chain
-        ccc = reacting center status: 0=unmarked, 1=a center, -1=not a center; 
-              Additional: 2=no change, 4=bond made/broken, 8=bond order changes 12=4+8 (both made/broken and changes); 
+        ccc = reacting center status: 0=unmarked, 1=a center, -1=not a center;
+              Additional: 2=no change, 4=bond made/broken, 8=bond order changes 12=4+8 (both made/broken and changes);
               5=(4 + 1), 9=(8 + 1), and 13=(12 + 1) are also possible
 
-    properties block: 
+    properties block:
     where:
-        Most lines in the properties block are identified by a prefix of the form "M  XXX" where two spaces 
+        Most lines in the properties block are identified by a prefix of the form "M  XXX" where two spaces
         separate the M and XXX.
         The prefix: "M  END" terminates the properties block.
     """
@@ -327,6 +328,10 @@ class Ctab(CTfile):
                             self.atoms[int(atom_number) - 1]._ctab_data[atom_property] = charge_index[property_value]
                         self.atoms[int(atom_number) - 1]._ctab_property_data[property_name] = property_value
 
+            elif key == 'version':
+                print("BANG")
+                break
+
             elif key == 'CtabBlockEnd':
                 break
 
@@ -354,10 +359,10 @@ class Ctab(CTfile):
             elif key == 'CtabPropertiesBlock':
                 if self['CtabPropertiesBlock']:
                     output.write(self._to_ctfile_property_block())
-            
+
             else:
                 raise KeyError('Ctab object does not supposed to have any other information: "{}".'.format(key))
-
+        print(self.ctab_conf)
         output.write(self.ctab_conf[self.version]['END']['fmt'])
         output.write('\n')
 
@@ -366,7 +371,7 @@ class Ctab(CTfile):
     def _to_ctfile_counts_line(self, key):
         """Create counts line in ``CTfile`` format.
 
-        :param str key: Counts line key. 
+        :param str key: Counts line key.
         :return: Counts line string.
         :rtype: :py:class:`str`
         """
@@ -380,7 +385,7 @@ class Ctab(CTfile):
     def _to_ctfile_atom_block(self, key):
         """Create atom block in `CTfile` format.
 
-        :param str key: Ctab atom block key. 
+        :param str key: Ctab atom block key.
         :return: Ctab atom block.
         :rtype: :py:class:`str`
         """
@@ -393,7 +398,7 @@ class Ctab(CTfile):
     def _to_ctfile_bond_block(self, key):
         """Create bond block in `CTfile` format.
 
-        :param str key: Ctab atom block key. 
+        :param str key: Ctab atom block key.
         :return: Ctab bond block.
         :rtype: :py:class:`str`
         """
@@ -405,7 +410,7 @@ class Ctab(CTfile):
 
 
     def _to_ctfile_property_block(self):
-        
+
         """Create ctab properties block in `CTfile` format from atom-specific properties.
         : return: Ctab property block.
         : rtype: :py:class:`str`
@@ -445,7 +450,12 @@ class Ctab(CTfile):
         :return: Version of the `CTfile`.
         :rtype: :py:class:`str`.
         """
-        return self['CtabCountsLine']['version']
+        if 'version' in self['CtabCountsLine'].keys():
+            return self['CtabCountsLine']['version']
+        else:
+            print("No structure data given, defaulting to V2000")
+            self['CtabCountsLine']['version'] = 'V2000'
+            return self['CtabCountsLine']['version']
 
     @property
     def atoms(self):
@@ -469,7 +479,7 @@ class Ctab(CTfile):
     def positions(self):
         """List of positions of atoms in atoms block starting from 1.
 
-        :return: List of positions of atoms in atoms block starting from 1. 
+        :return: List of positions of atoms in atoms block starting from 1.
         :rtype: :py:class:`list`.
         """
         return [str(i) for i in range(1, len(self.atoms) + 1)]
@@ -602,7 +612,7 @@ class Ctab(CTfile):
     def delete_atom(self, *atom_numbers):
         """Delete atoms by atom number(s).
 
-        :param str atom_numbers: 
+        :param str atom_numbers:
         :return: None.
         :rtype: :py:obj:`None`
         """
@@ -688,14 +698,17 @@ class Molfile(CTfile):
         :rtype: :py:class:`str`.
         """
         output = io.StringIO()
-
+        print("\n\n")
+        #print(self)
         for key in self:
             if key == 'HeaderBlock':
+                #print(self[key].values())
                 for line in self[key].values():
                     output.write(line)
                     output.write('\n')
 
             elif key == 'Ctab':
+                #print(self[key])
                 ctab_str = self[key]._to_ctfile()
                 output.write(ctab_str)
 
@@ -735,7 +748,7 @@ class Molfile(CTfile):
     def positions(self):
         """List of positions of atoms in atoms block starting from 1.
 
-        :return: List of positions of atoms in atoms block starting from 1. 
+        :return: List of positions of atoms in atoms block starting from 1.
         :rtype: :py:class:`list`.
         """
         return self['Ctab'].positions
@@ -770,7 +783,7 @@ class Molfile(CTfile):
     def as_sdfile(self, data=None):
         """Create ``SDfile`` from ``Molfile``.
 
-        :param dict data: Data associated with ``Molfile``. 
+        :param dict data: Data associated with ``Molfile``.
         :return: New ``SDfile`` instance.
         :rtype: :class:`~ctfile.ctfile.SDfile`.
         """
@@ -905,7 +918,7 @@ class SDfile(CTfile):
 
         :param molfile: ``Molfile`` instance.
         :type molfile: :class:`~ctfile.ctfile.Molfile`.
-        :param dict data: Data associated with ``Molfile`` instance. 
+        :param dict data: Data associated with ``Molfile`` instance.
         :return: None.
         :rtype: :py:obj:`None`.
         """
@@ -929,7 +942,7 @@ class SDfile(CTfile):
     def add_sdfile(self, sdfile):
         """Add new ``SDfile`` to current ``SDfile``.
 
-        :param sdfile: ``SDfile`` instance. 
+        :param sdfile: ``SDfile`` instance.
         :return: None.
         :rtype: :py:obj:`None`.
         """
@@ -957,6 +970,7 @@ class SDfile(CTfile):
                 molfile = Molfile()
                 molfile._build(lexer)
                 self[str(current_entry_id)] = OrderedDict(molfile=molfile, data=OrderedDict())
+                #print(len(molfile['HeaderBlock']))
 
             elif key == 'DataBlockStart':
                 data_block = self._build_data_block(lexer)
@@ -971,7 +985,7 @@ class SDfile(CTfile):
         return self
 
     def _build_data_block(self, lexer):
-        """Build the data block of :class:`~ctfile.ctfile.SDfile` instance. 
+        """Build the data block of :class:`~ctfile.ctfile.SDfile` instance.
 
         :return: Data block.
         :rtype: :py:class:`collections.OrderedDict`.
@@ -1007,7 +1021,10 @@ class SDfile(CTfile):
         output = io.StringIO()
 
         for entry in self.values():
-            output.write(entry['molfile']._to_ctfile())
+            if len(entry['molfile']['HeaderBlock']) != 0:
+                output.write(entry['molfile']._to_ctfile())
+            else:
+                output.write("\n")
 
             for header, values in entry['data'].items():
                 output.write('> <{}>\n'.format(header))
@@ -1022,7 +1039,7 @@ class SDfile(CTfile):
         """Create list of ``Molfile`` instances.
 
         :return: List of ``Molfile`` instances.
-        :rtype: :py:class:`list`. 
+        :rtype: :py:class:`list`.
         """
         return [entry['molfile'] for entry in self.values()]
 
@@ -1071,7 +1088,7 @@ class Atom(object):
         self.neighbors = []
         self._ctab_data = OrderedDict()
         self._ctab_property_data = OrderedDict()
-        
+
         self._ctab_data['x'] = x
         self._ctab_data['y'] = y
         self._ctab_data['z'] = z
@@ -1125,7 +1142,7 @@ class Atom(object):
     def isotope(self, property_specifier='ISO'):
         """Atom isotope
 
-        :param property_specifier: 
+        :param property_specifier:
         :return:
         :rtype:i
         """
@@ -1135,9 +1152,9 @@ class Atom(object):
     def isotope(self, value, property_specifier='ISO'):
         """Atom isotope setter.
 
-        :param value: 
-        :param property_specifier: 
-        :return: 
+        :param value:
+        :param property_specifier:
+        :return:
         """
         self._ctab_property_data[property_specifier] = str(value)
 
@@ -1147,7 +1164,7 @@ class Atom(object):
 
         :return:
         """
-        
+
         return self._ctab_data["atom_symbol"]
 
     @atom_symbol.setter
@@ -1163,8 +1180,8 @@ class Atom(object):
     def charge(self, property_specifier='CHG'):
         """
 
-        :param property_specifier: 
-        :return: 
+        :param property_specifier:
+        :return:
         """
         ctab_property_charge = self._ctab_property_data.get(property_specifier, '')
 
@@ -1177,9 +1194,9 @@ class Atom(object):
     def charge(self, value, property_specifier='CHG'):
         """
 
-        :param value: 
-        :param property_specifier: 
-        :return: 
+        :param value:
+        :param property_specifier:
+        :return:
         """
         self._ctab_property_data[property_specifier] = str(value)
 
@@ -1286,8 +1303,3 @@ class CtabAtomBondEncoder(json.JSONEncoder):
             return o._ctab_data
         elif isinstance(o, dict):
             return o.__dict__
-
-
-
-
-
