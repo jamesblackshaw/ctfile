@@ -13,7 +13,7 @@ from __future__ import print_function, division, unicode_literals
 from collections import deque
 from collections import namedtuple
 
-
+DEBUG = False
 HeaderBlock = namedtuple('HeaderBlock', ['molecule_name', 'software', 'comment'])
 MolfileStart = namedtuple('MolfileStart', [])
 MolfileEnd = namedtuple('MolfileEnd', [])
@@ -78,9 +78,11 @@ def _molfile(stream):
     """
     yield MolfileStart()
     copy_stream = stream.copy()
-    #print(stream)
+    if DEBUG:
+        print(stream)
     header = (copy_stream.popleft().strip(), copy_stream.popleft().strip(), copy_stream.popleft().strip())
-    print("HEADER = {}".format(header))
+    if DEBUG:
+        print("HEADER = {}".format(header))
     #data_only = re.compile("> <")
     if "> <" in header[1]:
         print("no header for record {} {}, skipping molfile processing".format(header[1], header[2]))
@@ -103,7 +105,6 @@ def _sdfile(stream):
     yield DataBlockStart()
     # yield from _data_block(stream=stream)
     for token in _data_block(stream=stream):
-        print(token)
         yield token
     yield DataBlockEnd()
 
@@ -119,12 +120,14 @@ def _ctab(stream):
     counts_line = stream.popleft()
     counts_line_values = [counts_line[i:i + 3].strip() for i in range(0, len(counts_line) - 6, 3)] + \
                          [counts_line[-6:len(counts_line)].strip()]
-    print("COUNTS_LINE_VALUES: {} \n".format(counts_line_values))
+    if DEBUG:
+        print("COUNTS_LINE_VALUES: {} \n".format(counts_line_values))
     if counts_line_values == ['']:
         ctab_counts_line = ""
     else:
         ctab_counts_line = CtabCountsLine(*counts_line_values)
-        print("ctab_counts_line: {} \n".format(ctab_counts_line))
+        if DEBUG:
+            print("ctab_counts_line: {} \n".format(ctab_counts_line))
         yield ctab_counts_line
         number_of_atoms = ctab_counts_line.number_of_atoms
         number_of_bonds = ctab_counts_line.number_of_bonds
@@ -139,7 +142,6 @@ def _ctab(stream):
 
         # yield from _ctab_property_block(stream=stream)
         for token in _ctab_property_block(stream=stream):
-            print(token)
             yield token
 
     yield CtabBlockEnd()
@@ -179,7 +181,10 @@ def _ctab_bond_block(number_of_lines, block_type, stream):
     :rtype: :class:`~ctfile.tokenizer.CtabBondBlockLine`
     """
     for _ in range(int(number_of_lines)):
-        line = stream.popleft()
+        try:
+            line = stream.popleft()
+        except IndexError as e :
+            raise IndexError("{}. This is likely due to a truncated molblock in the CTAB file".format(e))
         line_values = [line[i:i + 3].strip() for i in range(0, 21, 3)]
         line_values = [item if item != "" else "0" for item in line_values]
         yield block_type(*line_values)
@@ -193,7 +198,10 @@ def _ctab_property_block(stream):
     :return: Tuples of data.
     :rtype: :class:`~ctfile.tokenizer.CtabPropertiesBlockLine`
     """
-    line = stream.popleft()
+    try:
+        line = stream.popleft()
+    except IndexError as e :
+        raise IndexError("{}. This is likely due to a truncated molblock in the CTAB file".format(e))
     while line != 'M  END':
 
         tokens = line.split()

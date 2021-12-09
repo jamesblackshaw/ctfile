@@ -25,6 +25,7 @@ from .exceptions import IsotopeSpecError, ChargeSpecError
 import jsonpickle
 import re
 
+DEBUG = False
 
 class CTfile(OrderedDict):
     """Base class to represent collection of Chemical table file (``CTfile``)
@@ -329,7 +330,6 @@ class Ctab(CTfile):
                         self.atoms[int(atom_number) - 1]._ctab_property_data[property_name] = property_value
 
             elif key == 'version':
-                print("BANG")
                 break
 
             elif key == 'CtabBlockEnd':
@@ -362,7 +362,7 @@ class Ctab(CTfile):
 
             else:
                 raise KeyError('Ctab object does not supposed to have any other information: "{}".'.format(key))
-        print(self.ctab_conf)
+        #print(self.ctab_conf)
         output.write(self.ctab_conf[self.version]['END']['fmt'])
         output.write('\n')
 
@@ -698,8 +698,9 @@ class Molfile(CTfile):
         :rtype: :py:class:`str`.
         """
         output = io.StringIO()
-        print("\n\n")
-        #print(self)
+        if DEBUG:
+            print("\n\n")
+            print(self)
         for key in self:
             if key == 'HeaderBlock':
                 #print(self[key].values())
@@ -1027,10 +1028,10 @@ class SDfile(CTfile):
                 output.write("\n")
 
             for header, values in entry['data'].items():
-                output.write('> <{}>\n'.format(header))
+                output.write('\n> <{}>\n'.format(header))
                 output.write('\n'.join(values))
                 output.write('\n')
-            output.write('\n$$$$\n')
+            output.write('\n$$$$')
 
         return output.getvalue()
 
