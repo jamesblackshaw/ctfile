@@ -701,11 +701,15 @@ class Molfile(CTfile):
         if DEBUG:
             print("\n\n")
             print(self)
+        output.write(' \n')
         for key in self:
             if key == 'HeaderBlock':
                 #print(self[key].values())
                 for line in self[key].values():
-                    output.write(line)
+                    if line == '':
+                        output.write('')
+                    else:
+                        output.write("  {}".format(line))
                     output.write('\n')
 
             elif key == 'Ctab':
@@ -1025,7 +1029,7 @@ class SDfile(CTfile):
             if len(entry['molfile']['HeaderBlock']) != 0:
                 output.write(entry['molfile']._to_ctfile())
             else:
-                output.write("\n")
+                output.write('\n')
 
             for header, values in entry['data'].items():
                 output.write('\n> <{}>\n'.format(header))

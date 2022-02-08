@@ -159,7 +159,11 @@ def _ctab_atom_block(number_of_lines, block_type, stream):
     :rtype: :class:`~ctfile.tokenizer.CtabAtomBlockLine`
     """
     for _ in range(int(number_of_lines)):
-        line = stream.popleft()
+        try:
+            line = stream.popleft()
+        except IndexError as e:
+            print(e, file=sys.stderr)
+            print("Error in CTAB fine, this is likely a truncated CTAB or a missing structure section in an record")
         x, y, z = line[:10].strip(), line[10:20].strip(), line[20: 30].strip()
         atom_symbol = line[30:34].strip()
         mass_difference = line[34:36].strip()
